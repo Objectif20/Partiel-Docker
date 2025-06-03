@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  backend:
+    image: remythibaut/ecodeli-backend:latest
+    container_name: ecodeli-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.backend
+    networks:
+      - backend_net
+      - frontend_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+
+  frontend:
+    image: remythibaut/ecodeli-frontend:latest
+    container_name: ecodeli-frontend
+    restart: always
+    ports:
+      - "80:80"
+    networks:
+      - frontend_net
+    depends_on:
+      backend:
+        condition: service_started
+
+  mongodb:
+    image: mongo:8.0.9
+    container_name: mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME_FILE: /run/secrets/mongo_root_username
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo_root_password
+    volumes:
+      - mongodb_data:/data/db
+      - ./ecodeli-mongodb-init/objectif20:/docker-entrypoint-initdb.d/dump:ro
+      - ./ecodeli-mongodb-init/init-mongo.sh:/docker-entrypoint-initdb.d/init-mongo.sh:ro
+    secrets:
+      - mongo_root_username
+      - mongo_root_password
+    networks:
+      - backend_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgis/postgis:17-master
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./ecodeli-postgres-init/ecodeli-postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    secrets:
+      - postgres_user
+      - postgres_password
+    networks:
+      - backend_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U objectif20"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongodb_data:
+  postgres_data:
+
+secrets:
+  mongo_root_username:
+    file: ./secrets/mongo_root_username
+  mongo_root_password:
+    file: ./secrets/mongo_root_password
+  postgres_user:
+    file: ./secrets/postgres_user
+  postgres_password:
+    file: ./secrets/postgres_password
+
+networks:
+  backend_net:
+    driver: bridge
+  frontend_net:
+    driver: bridge
