@@ -1,4 +1,4 @@
-# 📦 Déploiement de l’application EcoDeli – Projet Annuel
+# Déploiement de l’application EcoDeli – Projet Docker
 
 **Rémy THIBAUT – Damien VAURETTE – Quentin DELNEUF**
 **Classe : 2A3**
@@ -77,9 +77,9 @@ Ces volumes garantissent la conservation des données même en cas de redémarra
 
 ### Dépendances et démarrage des services
 
-La section `depends_on` et les **healthchecks** permettent d’assurer un démarrage ordonné des conteneurs :
+La section **depends_on** et les **healthchecks** permettent d’assurer un démarrage ordonné des conteneurs :
 
-* ✅ Le **backend** attend que PostgreSQL et MongoDB soient sains avant de démarrer.
+* ✅ Le **backend** attend que PostgreSQL et MongoDB soient sains (dit healthy) avant de démarrer.
 * ✅ Le **frontend** attend que le backend soit démarré.
 
 Exemple de configuration :
@@ -99,8 +99,8 @@ depends_on:
 ### 1️⃣ Cloner le dépôt
 
 ```bash
-git clone https://github.com/remythibaut/ecodeli-deployment.git
-cd ecodeli-deployment
+git clone https://github.com/Objectif20/Partiel-Docker.git
+cd Partiel-Docker
 ```
 
 ### 2️⃣ Vérifier les fichiers d’environnement
@@ -114,34 +114,36 @@ MONGO_URL=mongodb://<user>:<password>@mongodb:27017/<db>?authSource=admin
 DATABASE_URL=postgres://<user>:<password>@postgres:5432/<db>
 ```
 
+> Note : Vous pouvez retrouver sur le projet partagé sur MyGES les fichiers de variables d'environnement.
+
 ### 3️⃣ Construire et démarrer les services
 
 ```bash
-docker compose up --build -d
+docker-compose up --build -d
 ```
 
 ---
 
 ## Vérification
 
-Certains container peuvent prendre quelques secondes pour terminer de démarrer et d'être opérationnel (c'est notamment le cas de Ecodeli-backend qui prend entre 10 et 15 secondes, les bases de données sont démarrées pendant le docker-compose et avant le backend).
+Certains containers peuvent prendre quelques secondes pour terminer de démarrer et d'être opérationnel (c'est notamment le cas de Ecodeli-backend qui prend entre 10 et 15 secondes, les bases de données sont démarrées pendant le docker-compose et avant le backend).
 
 * Consulter les logs pour vérifier le bon démarrage :
 
 ```bash
-docker compose logs -f
+docker-compose logs -f
 ```
 
 * Tester la persistance des données en se connectant aux conteneurs de MongoDB et PostgreSQL.
 
 * Accéder aux applications :
 
-  * Frontend : [http://localhost:80](http://localhost:80)
+  * Frontend : [http://localhost:80](http://localhost:80) (ou [http://localhost:](http://localhost))
   * Backend : [http://localhost:3000](http://localhost:3000)
 
 Pour tester le backend, vous pouvez vous rendre sur la page [http://localhost:80/deliveries](http://localhost:80/deliveries) afin d'y voir des informations depuis la base de données PostgreSQL.
 
-Pour tester le bon fonctionnement de la base de données MongoDb, vous pouvez vous pouvez effectuer la commande.
+Pour tester le bon fonctionnement de la base de données MongoDb, vous pouvez effectuer la commande.
 
 ```bash 
 curl http://localhost:3000/admin/global/mongodb
@@ -231,35 +233,41 @@ Vous devriez voir quelque chose comme ceci :
     ]
     ```
 
-## Tester le fonctionnement de l'application Fullstack
+## Build des images personnalisées
 
-Rendez-vous sur l'application Frontend et connectez-vous avec l'utilisateur suivant (mis à disposition pour la démo) :
+Si vous souhaitez effectuer vous-même le build des images personnalisées (Backend et Frontend), vous pouvez les construire vous-même grâce aux Dockerfile présents dans chaque projet.
 
-* Mail : test@mail.com
-* Mot de Passe : iLoveDocker
+* Ecodeli-Frontend
 
----
+  ```bash
+  docker build \
+    --build-arg VITE_API_BASE_URL=VITE_API_BASE_URL \
+    --build-arg VITE_STRIPE_PUBLIC_KEY=VITE_STRIPE_PUBLIC_KEY \
+    --build-arg VITE_ONE_SIGNAL_APP_ID=VITE_ONE_SIGNAL_APP_ID \
+    -t ecodeli-frontend:latest .
+  ```
+
+  Dans une application frontend, les variables d'environnement sont stockées dans les fichiers statiques de l'application après le build (JS) et ne peuvent donc pas être chargées après la création de l'image.
+
+
+* Ecodeli-Backend
+
+  ```bash
+  docker build -t ecodeli-backend:latest .
+  ```
+
 
 ## Liens du projet
 
 * **GitHub** (code source et fichiers Docker) :
-  [https://github.com/remythibaut/ecodeli-deployment](https://github.com/remythibaut/ecodeli-deployment)
+  [https://github.com/Objectif20/Partiel-Docker.git](https://github.com/Objectif20/Partiel-Docker.git)
 
 * **Docker Hub (images)** :
 
-  * [remythibaut/ecodeli-frontend](https://hub.docker.com/r/remythibaut/ecodeli-frontend)
-  * [remythibaut/ecodeli-backend](https://hub.docker.com/r/remythibaut/ecodeli-backend)
+  * Images personnalisées : 
+    * [remythibaut/ecodeli-frontend](https://hub.docker.com/r/remythibaut/ecodeli-frontend)
+    * [remythibaut/ecodeli-backend](https://hub.docker.com/r/remythibaut/ecodeli-backend)
 
----
-
-## Conclusion
-
-Avec cette architecture :
-
-- ✅ Chaque composant est conteneurisé de manière indépendante (frontend, backend, bases de données).
-- ✅ Les services sont orchestrés avec Docker Compose.
-- ✅ La persistance des données est assurée par des volumes Docker.
-- ✅ Les communications inter-containers sont sécurisées via des réseaux dédiés.
-- ✅ Les images sont disponibles sur Docker Hub et le projet complet est hébergé sur GitHub.
-
-Ce projet illustre la mise en pratique de nos compétences en conteneurisation et orchestration de services avec Docker.
+  * Images officielles : 
+    * [mongo:8.0.9](https://hub.docker.com/layers/library/mongo/8.0.9/images/sha256-93658def16befe2cbccc5cd6019d90474c6484014c8ed12f40e73b866ade3c3e)
+    * [postgis/postgis:17-master](https://hub.docker.com/layers/postgis/postgis/17-master/images/sha256-ef35a17f345fb5bd693102c712f677d4e4a3baaccc2b8679f8dd3f0e78acf360)
